@@ -28,7 +28,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "ReadMe\\Metrics\\MetricsServiceProvider"
+                "ReadMe\\Metrics\\ServiceProvider"
             ]
         }
     },
