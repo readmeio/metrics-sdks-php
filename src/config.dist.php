@@ -26,7 +26,8 @@ return [
      * @link https://docs.readme.com/docs/sending-api-logs-to-readme
      */
     'group' => function (Request $request): array {
-        $user = $request->user();
+        // @fixme Replace this code with similar code that's relevant to your application.
+        /* $user = $request->user();
         if (!$user) {
             return [
                 'id' => session()->getId()
@@ -37,7 +38,7 @@ return [
             'id' => $user->id,
             'label' => $user->name,
             'email' => $user->email
-        ];
+        ]; */
     },
 
     /**
