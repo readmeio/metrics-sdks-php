@@ -1,7 +1,7 @@
 <?php
 namespace ReadMe;
 
-class MetricsMiddleware
+class Middleware
 {
     /** @var Metrics */
     private $metrics;
@@ -21,6 +21,7 @@ class MetricsMiddleware
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure  $next
      * @return mixed
+     * @throws \ReadMe\MetricsException
      */
     public function handle($request, \Closure $next)
     {

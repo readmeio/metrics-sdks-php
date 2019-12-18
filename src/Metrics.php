@@ -6,11 +6,8 @@ use GuzzleHttp\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-// use Illuminate\Support\Arr;
 use PackageVersions\Versions;
-// use ReadMe\Exceptions\MetricsException;
 use Symfony\Component\HttpFoundation\HeaderBag;
-// use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Response;
 
 class Metrics
@@ -40,7 +37,10 @@ class Metrics
     {
         $this->api_key = $api_key;
         $this->group = $group;
-        $this->development_mode = array_key_exists('development_mode', $options) ? (bool)$options['development_mode'] : false;
+        $this->development_mode = array_key_exists('development_mode', $options)
+            ? (bool)$options['development_mode']
+            : false;
+
         $this->blacklist = array_key_exists('blacklist', $options) ? $options['blacklist'] : [];
         $this->whitelist = array_key_exists('whitelist', $options) ? $options['whitelist'] : [];
 
@@ -186,7 +186,9 @@ class Metrics
 
         return [
             'status' => $status_code,
-            'statusText' => isset(Response::$statusTexts[$status_code]) ? Response::$statusTexts[$status_code] : 'Unknown status',
+            'statusText' => isset(Response::$statusTexts[$status_code])
+                ? Response::$statusTexts[$status_code]
+                : 'Unknown status',
             'headers' => static::convertHeaderBagToArray($response->headers),
             'content' => [
                 'text' => json_encode($body),
