@@ -50,6 +50,8 @@ class Metrics
             // If the request takes longer than 2 seconds, let it go.
             // @todo allow this to be configured
             'timeout' => 2,
+
+            // @todo specify a custom user agent for the library
         ]);
     }
 
@@ -111,7 +113,7 @@ class Metrics
         $group = ($this->group)($request);
 
         if (!array_key_exists('id', $group)) {
-            throw new \TypeError('Metrics grouping function did not return an array an id present.');
+            throw new \TypeError('Metrics grouping function did not return an array with an id present.');
         } elseif (empty($group['id'])) {
             throw new \TypeError('Metrics grouping function must not return an empty id.');
         }
@@ -130,7 +132,7 @@ class Metrics
                     'entries' => [
                         [
                             'pageref' => $request->url(),
-                            'startedDateTime' => date("c", $request_start),
+                            'startedDateTime' => date('c', $request_start),
                             'time' => (microtime(true) - $request_start) * 1000,
                             'request' => $this->processRequest($request),
                             'response' => $this->processResponse($response)
@@ -158,6 +160,7 @@ class Metrics
             'headers' => static::convertHeaderBagToArray($request->headers),
             'queryString' => static::convertObjectToArray($request->query->all()),
             'postData' => [
+                // @todo Should filter out anything in queryString?
                 'mimeType' => 'application/json',
                 'params' => static::convertObjectToArray($params)
             ]
