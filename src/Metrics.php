@@ -3,6 +3,7 @@ namespace ReadMe;
 
 use Closure;
 use GuzzleHttp\Client;
+use GuzzleHttp\ClientInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -31,7 +32,7 @@ class Metrics
     /** @var Closure */
     private $group;
 
-    /** @var Client */
+    /** @var ClientInterface */
     private $client;
 
     public function __construct(string $api_key, Closure $group, array $options = [])
@@ -45,7 +46,7 @@ class Metrics
         $this->blacklist = array_key_exists('blacklist', $options) ? $options['blacklist'] : [];
         $this->whitelist = array_key_exists('whitelist', $options) ? $options['whitelist'] : [];
 
-        $this->client = new Client([
+        $this->client = (isset($options['client'])) ? $options['client'] : new Client([
             'base_uri' => self::METRICS_API,
 
             // If the request takes longer than 2 seconds, let it go.
@@ -94,6 +95,9 @@ class Metrics
 
         $json = json_decode($json);
         if (!isset($json->errors)) {
+            // If we didn't get any errors back from the Metrics API, but didn't get an `OK` response, then something
+            // must be up with it so don't worry about communicating that here since there isn't anything actionable
+            // for the user.
             return;
         }
 
@@ -320,16 +324,5 @@ class Metrics
     private function isArrayAssoc($array = []): bool
     {
         return count(array_filter(array_keys($array), 'is_string')) > 0;
-    }
-
-    /**
-     * Override the current Guzzle client with a new instance. Used in testing.
-     *
-     * @param Client $client
-     * @return $this
-     */
-    protected function setClient(Client $client): self
-    {
-        $this->client = $client;
     }
 }

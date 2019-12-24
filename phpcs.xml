@@ -4,7 +4,5 @@
     <rule ref="PSR2"/>
 
     <!-- Require that strings be single quoted. -->
-    <rule ref="Squiz.Strings.DoubleQuoteUsage">
-        <type>warning</type>
-    </rule>
+    <rule ref="Squiz.Strings.DoubleQuoteUsage" />
 </ruleset>

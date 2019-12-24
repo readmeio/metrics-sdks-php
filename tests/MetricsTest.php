@@ -1,9 +1,15 @@
 <?php
 namespace ReadMe\Tests;
 
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ServerException;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use ReadMe\Metrics;
+use ReadMe\MetricsException;
 use Symfony\Component\HttpFoundation\HeaderBag;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -67,10 +73,116 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         $this->metrics = new Metrics('fakeApiKey', $this->metrics_group);
     }
 
-    public function testTrack(): void
+    /**
+     * @dataProvider providerDevelopmentModeToggle
+     * @param bool $development_mode
+     */
+    public function testTrack(bool $development_mode): void
     {
-        $this->markTestIncomplete();
-        // $this->metrics->track();
+        $mock = new MockHandler([
+            new \GuzzleHttp\Psr7\Response(200, [], 'OK'),
+        ]);
+
+        $handlerStack = HandlerStack::create($mock);
+        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+            'development_mode' => $development_mode,
+            'client' => new Client(['handler' => $handlerStack])
+        ]);
+
+        $request = $this->getMockRequest(self::MOCK_QUERY_PARAMS);
+        $response = $this->getMockJsonResponse();
+
+        try {
+            $metrics->track($request, $response);
+            $this->assertTrue(true);
+        } catch (\Exception $e) {
+            $this->fail('No exceptions should have been thrown for a valid request.');
+        }
+    }
+
+    /**
+     * @dataProvider providerDevelopmentModeToggle
+     * @param bool $development_mode
+     */
+    public function testTrackHandlesApiErrors(bool $development_mode): void
+    {
+        if ($development_mode) {
+            $this->expectException(MetricsException::class);
+            // `RequestModel` from the API response should get swapped out with `ValidationError`.
+            $this->expectExceptionMessage('ValidationError: queryString.0.value: Path `value` is required.');
+        }
+
+        $mock = new MockHandler([
+            new \GuzzleHttp\Psr7\Response(200, [], json_encode([
+                'errors' => [
+                    'queryString.0.value' => [
+                        'message' => 'Path `value` is required.',
+                        'name' => 'ValidatorError',
+                        'properties' => [
+                            'kind' => 'required',
+                            'path' => 'value'
+                        ]
+                    ]
+                ],
+                '_message' => 'RequestModel validation failed',
+                'message' => 'RequestModel validation failed: queryString.0.value: Path `value` is required.',
+                'name' => 'ValidationError',
+            ])),
+        ]);
+
+        $handlerStack = HandlerStack::create($mock);
+        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+            'development_mode' => $development_mode,
+            'client' => new Client([
+                'handler' => $handlerStack
+            ])
+        ]);
+
+        $request = $this->getMockRequest(self::MOCK_QUERY_PARAMS);
+        $response = $this->getMockJsonResponse();
+
+        $metrics->track($request, $response);
+
+        if (!$development_mode) {
+            $this->assertTrue(
+                true,
+                'When not in development mode, exceptions should not have been thrown so this assertion should pass.'
+            );
+        }
+    }
+
+    /**
+     * @dataProvider providerDevelopmentModeToggle
+     * @param bool $development_mode
+     */
+    public function testTrackHandlesApiServerUnavailability(bool $development_mode): void
+    {
+        if ($development_mode) {
+            $this->expectException(ServerException::class);
+            $this->expectExceptionMessageMatches('/500 Internal Server Error/');
+        }
+
+        $mock = new MockHandler([
+            new \GuzzleHttp\Psr7\Response(500),
+        ]);
+
+        $handlerStack = HandlerStack::create($mock);
+        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+            'development_mode' => $development_mode,
+            'client' => new Client(['handler' => $handlerStack])
+        ]);
+
+        $request = $this->getMockRequest(self::MOCK_QUERY_PARAMS);
+        $response = $this->getMockJsonResponse();
+
+        $metrics->track($request, $response);
+
+        if (!$development_mode) {
+            $this->assertTrue(
+                true,
+                'When not in development mode, exceptions should not have been thrown so this assertion should pass.'
+            );
+        }
     }
 
     public function testConstructPayload(): void
@@ -355,5 +467,13 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         $response->headers->shouldReceive('get')->withArgs(['Content-Type'])->andReturn('text/plain');
 
         return $response;
+    }
+
+    public function providerDevelopmentModeToggle(): array
+    {
+        return [
+            'development mode on' => [true],
+            'development mode off' => [false],
+        ];
     }
 }
