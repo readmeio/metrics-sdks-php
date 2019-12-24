@@ -151,23 +151,14 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
         $params = $payload['request']['log']['entries'][0]['request']['postData']['params'];
         $this->assertSame([
+            ['name' => 'password', 'value' => '123456'],
+            ['name' => 'apiKey', 'value' => 'abcdef'],
+            ['name' => 'another', 'value' => 'Hello world'],
             [
-                'name' => 'password',
-                'value' => '123456',
-            ],
-            [
-                "name" => "apiKey",
-                "value" => "abcdef"
-            ],
-            [
-                "name" => "another",
-                "value" => "Hello world"
-            ],
-            [
-                "name" => "testfileparam",
+                'name' => 'testfileparam',
                 'value' => file_get_contents($this->test_files_params['testfileparam']['tmp_name']),
-                "fileName" => "owlbert",
-                "contentType" => "image/png"
+                'fileName' => 'owlbert',
+                'contentType' => 'image/png'
             ]
         ], $params);
     }

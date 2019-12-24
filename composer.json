@@ -40,6 +40,7 @@
     "scripts": {
         "coverage": "phpunit --coverage-html reports/",
         "lint": "phpcs --standard=phpcs.xml src/ tests/",
+        "lint:fix": "phpcbf --standard=phpcs.xml src/ tests/",
         "phpunit": "phpunit tests/",
         "test": [
             "composer run lint",
