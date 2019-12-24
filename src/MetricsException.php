@@ -3,6 +3,7 @@ namespace ReadMe;
 
 class MetricsException extends \Exception
 {
+    /** @var array */
     private $errors = [];
 
     public function setErrors(array $errors): self
