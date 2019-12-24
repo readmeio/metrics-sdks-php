@@ -53,7 +53,6 @@ class Metrics
             'base_uri' => self::METRICS_API,
 
             // If the request takes longer than 2 seconds, let it go.
-            // @todo allow this to be configured
             'timeout' => 2,
         ]);
 
@@ -61,6 +60,8 @@ class Metrics
     }
 
     /**
+     * @todo Handle bad token 401 errors?
+     * @todo Change this to a queueing model like in readme-node?
      * @param Request $request
      * @param Response $response
      * @throws MetricsException
@@ -68,28 +69,29 @@ class Metrics
     public function track(Request $request, $response): void
     {
         $payload = $this->constructPayload($request, $response);
+        $headers = [
+            'Authorization' => 'Basic ' . base64_encode($this->api_key . ':'),
+            'User-Agent' => 'readme-metrics-php/' . $this->package_version
+        ];
 
-        try {
-            // @todo maybe handle bad token 401 errors?
-            $response = $this->client->post('/request', [
-                'headers' => [
-                    'Authorization' => 'Basic ' . base64_encode($this->api_key . ':'),
-                    'User-Agent' => 'readme-metrics-php/' . $this->package_version
-                ],
-                'json' => [
-                    // @todo maybe change this to a queueing model like in readme-node
-                    $payload
-                ]
+        // If not in development mode, all requests should be async.
+        if (!$this->development_mode) {
+            $promise = $this->client->postAsync('/request', [
+                'headers' => $headers,
+                'json' => [$payload]
             ]);
-        } catch (\Exception $e) {
-            if ($this->development_mode) {
-                throw $e;
-            }
+
+            $promise->then();
+            return;
         }
 
-        // If we're in development mode, silently ignore all API dealings.
-        if (!$this->development_mode) {
-            return;
+        try {
+            $response = $this->client->post('/request', [
+                'headers' => $headers,
+                'json' => [$payload]
+            ]);
+        } catch (\Exception $e) {
+            throw $e;
         }
 
         $json = (string) $response->getBody();
