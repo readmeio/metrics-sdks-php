@@ -16,9 +16,25 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
     private $metrics_group;
 
     // ?val=1&arr[]=&arr[]=3
-    private $test_query_param = [
+    private $test_query_params = [
         'val' => '1',
         'arr' => [null, '3'],
+    ];
+
+    private $test_post_params = [
+        'password' => '123456',
+        'apiKey' => 'abcdef',
+        'another' => 'Hello world'
+    ];
+
+    private $test_files_params = [
+        'testfileparam' => [
+          'name' => 'owlbert',
+          'type' => 'application/octet-stream',
+          'tmp_name' => __DIR__ . '/fixtures/owlbert.png',
+          'error' => 0,
+          'size' => 701048
+        ]
     ];
 
     public static function setUpBeforeClass(): void
@@ -52,7 +68,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
     public function testConstructPayload(): void
     {
-        $request = $this->getMockRequest($this->test_query_param);
+        $request = $this->getMockRequest($this->test_query_params);
         $response = $this->getMockJsonResponse();
         $payload = $this->metrics->constructPayload($request, $response);
 
@@ -95,16 +111,15 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         ], $log_request['headers']);
 
         $this->assertSame([
-            ['name' => 'val', 'value' => '"1"'],
+            ['name' => 'val', 'value' => '1'],
             ['name' => 'arr', 'value' => '[null,"3"]']
         ], $log_request['queryString']);
 
         $this->assertSame('application/json', $log_request['postData']['mimeType']);
-        $this->assertSame([
-            // @todo Should actually return an empty array because there isn't any non GET data in this request?
-            ['name' => 'val', 'value' => '"1"'],
-            ['name' => 'arr', 'value' => '[null,"3"]']
-        ], $log_request['postData']['params']);
+        $this->assertEmpty(
+            $log_request['postData']['params'],
+            'postData should not have any data here because there is none for this GET request'
+        );
 
         // Assert that the response was set as expected into the payload.
         $log_response = $log_entry['response'];
@@ -130,7 +145,31 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
     public function testConstructPayloadWithUploadFileInRequest(): void
     {
-        $this->markTestIncomplete();
+        $request = $this->getMockRequest([], $this->test_post_params, $this->test_files_params);
+        $response = $this->getMockJsonResponse();
+        $payload = $this->metrics->constructPayload($request, $response);
+
+        $params = $payload['request']['log']['entries'][0]['request']['postData']['params'];
+        $this->assertSame([
+            [
+                'name' => 'password',
+                'value' => '123456',
+            ],
+            [
+                "name" => "apiKey",
+                "value" => "abcdef"
+            ],
+            [
+                "name" => "another",
+                "value" => "Hello world"
+            ],
+            [
+                "name" => "testfileparam",
+                'value' => file_get_contents($this->test_files_params['testfileparam']['tmp_name']),
+                "fileName" => "owlbert",
+                "contentType" => "image/png"
+            ]
+        ], $params);
     }
 
     public function testConstructPayloadShouldThrowErrorIfGroupFunctionDoesNotReturnExpectedPayload(): void
@@ -162,38 +201,49 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
     public function testProcessRequestShouldFilterOutItemsInBlacklist(): void
     {
         $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
-            'blacklist' => ['val']
+            'blacklist' => ['val', 'password']
         ]);
 
-        $request = $this->getMockRequest($this->test_query_param);
+        $request = $this->getMockRequest($this->test_query_params, $this->test_post_params);
         $response = $this->getMockJsonResponse();
         $payload = $metrics->constructPayload($request, $response);
 
-        $params = $payload['request']['log']['entries'][0]['request']['postData']['params'];
+        $request_data = $payload['request']['log']['entries'][0]['request'];
+
+        // Blacklist should not affect $_GET params.
         $this->assertSame([
-            [
-                'name' => 'arr',
-                'value' => '[null,"3"]'
-            ]
+            ['name' => 'val', 'value' => '1'],
+            ['name' => 'arr', 'value' => '[null,"3"]']
+        ], $request_data['queryString']);
+
+        $params = $request_data['postData']['params'];
+        $this->assertSame([
+            ['name' => 'apiKey', 'value' => 'abcdef'],
+            ['name' => 'another', 'value' => 'Hello world']
         ], $params);
     }
 
     public function testProcessRequestShouldFilterOnlyItemsInWhitelist(): void
     {
         $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
-            'whitelist' => ['val']
+            'whitelist' => ['val', 'password']
         ]);
 
-        $request = $this->getMockRequest($this->test_query_param);
+        $request = $this->getMockRequest($this->test_query_params, $this->test_post_params);
         $response = $this->getMockJsonResponse();
         $payload = $metrics->constructPayload($request, $response);
 
-        $params = $payload['request']['log']['entries'][0]['request']['postData']['params'];
+        $request_data = $payload['request']['log']['entries'][0]['request'];
+
+        // Whitelist should not affect $_GET params.
         $this->assertSame([
-            [
-                'name' => 'val',
-                'value' => '"1"'
-            ]
+            ['name' => 'val', 'value' => '1'],
+            ['name' => 'arr', 'value' => '[null,"3"]']
+        ], $request_data['queryString']);
+
+        $params = $request_data['postData']['params'];
+        $this->assertSame([
+            ['name' => 'password', 'value' => '123456']
         ], $params);
     }
 
@@ -207,20 +257,19 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         $this->markTestIncomplete();
     }
 
-    private function getMockRequest($query_params = [], $params = []): Request
+    private function getMockRequest($query_params = [], $post_params = [], $file_params = []): Request
     {
+        $_GET = $query_params;
+        $_POST = $post_params;
+        $_FILES = $file_params;
+
         $request = \Mockery::mock(Request::class, [
             'ip' => '8.8.8.8',
             'url' => 'http://api.example.com/v1/user',
-            'all' => $params + $query_params,
             'method' => 'GET',
             'fullUrl' => 'http://api.example.com/v1/user' .
                 (!empty($query_params)) ? '?' . http_build_query($query_params) : null
         ])->makePartial();
-
-        $request->query = \Mockery::mock(ParameterBag::class, [
-            'all' => $query_params
-        ]);
 
         $request->headers = \Mockery::mock(HeaderBag::class, [
             'all' => [

@@ -5,10 +5,11 @@ use Closure;
 use GuzzleHttp\Client;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use PackageVersions\Versions;
 use Symfony\Component\HttpFoundation\HeaderBag;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mime\MimeTypes;
 
 class Metrics
 {
@@ -145,12 +146,15 @@ class Metrics
 
     private function processRequest(Request $request): array
     {
+        // Since Laravel (currently as of 6.8.0) dumps $_GET and $_POST into `->query` and `->request` instead of
+        // putting $_GET into only `->query` and $_POST` into `->request`, we have no easy way way to dump only POST
+        // data into `postData`. So because of that, we're eschewing that and manually reconstructing our potential POST
+        // payload into an array here.
+        $params = array_replace_recursive($_POST, $_FILES);
         if (!empty($this->blacklist)) {
-            $params = $request->except($this->blacklist);
+            $params = $this->excludeDataFromBlacklist($params);
         } elseif (!empty($this->whitelist)) {
-            $params = $request->only($this->whitelist);
-        } else {
-            $params = $request->all();
+            $params = $this->excludeDataNotInWhitelist($params);
         }
 
         return [
@@ -158,9 +162,8 @@ class Metrics
             'url' => $request->fullUrl(),
             'httpVersion' => $_SERVER['SERVER_PROTOCOL'],
             'headers' => static::convertHeaderBagToArray($request->headers),
-            'queryString' => static::convertObjectToArray($request->query->all()),
+            'queryString' => static::convertObjectToArray($_GET),
             'postData' => [
-                // @todo Should filter out anything in queryString?
                 'mimeType' => 'application/json',
                 'params' => static::convertObjectToArray($params)
             ]
@@ -236,21 +239,39 @@ class Metrics
     protected static function convertObjectToArray(array $input): array
     {
         return array_map(function ($key) use ($input) {
-            if ($input[$key] instanceof UploadedFile) {
-                /** @var UploadedFile $file */
+            if (isset($input[$key]['tmp_name'])) {
                 $file = $input[$key];
                 return [
                     'name' => $key,
-                    'value' => $file->get(),
-                    'fileName' => $file->getClientOriginalName(),
-                    'contentType' => $file->getMimeType(),
+                    'value' => file_get_contents($file['tmp_name']),
+                    'fileName' => $file['name'],
+                    'contentType' => MimeTypes::getDefault()->guessMimeType($file['tmp_name'])
                 ];
             }
 
             return [
                 'name' => $key,
-                'value' => json_encode($input[$key])
+                // Only bother to JSON encode non-scalar data.
+                'value' => (is_scalar($input[$key])) ? $input[$key] : json_encode($input[$key])
             ];
         }, array_keys($input));
+    }
+
+    private function excludeDataFromBlacklist($data = []): array
+    {
+        Arr::forget($data, $this->blacklist);
+        return $data;
+    }
+
+    private function excludeDataNotInWhitelist($data = []): array
+    {
+        $ret = [];
+        foreach ($this->whitelist as $key) {
+            if (isset($data[$key])) {
+                $ret[$key] = $data[$key];
+            }
+        }
+
+        return $ret;
     }
 }
