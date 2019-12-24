@@ -197,7 +197,7 @@ class Metrics
                 : 'Unknown status',
             'headers' => static::convertHeaderBagToArray($response->headers),
             'content' => [
-                'text' => json_encode($body),
+                'text' => (is_scalar($body)) ? $body : json_encode($body),
                 'size' => $response->headers->get('Content-Length', 0),
                 'mimeType' => $response->headers->get('Content-Type')
             ]
@@ -217,7 +217,7 @@ class Metrics
             foreach ($values as $value) {
                 // If the header is empty, don't worry about it.
                 if ($value === '') {
-                    continue;
+                    continue; // @codeCoverageIgnore
                 }
 
                 $output[] = [
@@ -251,7 +251,6 @@ class Metrics
 
             return [
                 'name' => $key,
-                // Only bother to JSON encode non-scalar data.
                 'value' => (is_scalar($input[$key])) ? $input[$key] : json_encode($input[$key])
             ];
         }, array_keys($input));
