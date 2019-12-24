@@ -3,8 +3,6 @@
 use Illuminate\Http\Request;
 
 return [
-    // @todo extend the user of laravel queues
-
     /**
      * Your ReadMe API key. You can find this within your project configuration
      * on https://dash.readme.io/.

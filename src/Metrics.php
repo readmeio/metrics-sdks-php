@@ -3,7 +3,6 @@ namespace ReadMe;
 
 use Closure;
 use GuzzleHttp\Client;
-use GuzzleHttp\ClientInterface;
 use GuzzleHttp\Handler\CurlMultiHandler;
 use GuzzleHttp\HandlerStack;
 use Illuminate\Http\JsonResponse;
@@ -37,7 +36,7 @@ class Metrics
     /** @var CurlMultiHandler */
     private $curl_handler;
 
-    /** @var ClientInterface */
+    /** @var Client */
     private $client;
 
     /** @var string */
@@ -88,7 +87,7 @@ class Metrics
         // If not in development mode, all requests should be async.
         if (!$this->development_mode) {
             try {
-                $promise = $this->client->post('/request', [
+                $promise = $this->client->postAsync('/request', [
                     'headers' => $headers,
                     'json' => [$payload]
                 ]);
@@ -138,7 +137,7 @@ class Metrics
      */
     public function constructPayload(Request $request, $response): array
     {
-        $request_start = LARAVEL_START;
+        $request_start = (!defined('LARAVEL_START')) ? LARAVEL_START : $_SERVER['REQUEST_TIME_FLOAT'];
         $group = ($this->group)($request);
 
         if (!array_key_exists('id', $group)) {
@@ -226,7 +225,7 @@ class Metrics
             'headers' => static::convertHeaderBagToArray($response->headers),
             'content' => [
                 'text' => (is_scalar($body)) ? $body : json_encode($body),
-                'size' => $response->headers->get('Content-Length', 0),
+                'size' => $response->headers->get('Content-Length', '0'),
                 'mimeType' => $response->headers->get('Content-Type')
             ]
         ];
