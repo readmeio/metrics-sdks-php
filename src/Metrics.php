@@ -4,6 +4,8 @@ namespace ReadMe;
 use Closure;
 use GuzzleHttp\Client;
 use GuzzleHttp\ClientInterface;
+use GuzzleHttp\Handler\CurlMultiHandler;
+use GuzzleHttp\HandlerStack;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -32,6 +34,9 @@ class Metrics
     /** @var Closure */
     private $group;
 
+    /** @var CurlMultiHandler */
+    private $curl_handler;
+
     /** @var ClientInterface */
     private $client;
 
@@ -49,11 +54,17 @@ class Metrics
         $this->blacklist = array_key_exists('blacklist', $options) ? $options['blacklist'] : [];
         $this->whitelist = array_key_exists('whitelist', $options) ? $options['whitelist'] : [];
 
+        $this->curl_handler = new CurlMultiHandler();
         $this->client = (isset($options['client'])) ? $options['client'] : new Client([
+            'handler' => HandlerStack::create($this->curl_handler),
+
             'base_uri' => self::METRICS_API,
 
-            // If the request takes longer than 2 seconds, let it go.
-            'timeout' => 2,
+            // In development mode, requests are sent asynchronously (as well as PHP can without directly invoking
+            // shell cURL commands), so a very small timeout here ensures that the Metrics code will finish as fast as
+            // possible, send the POST request to the background and continue on with whatever else the application
+            // needs to execute.
+            'timeout' => (!$this->development_mode) ? 0.2 : 0,
         ]);
 
         $this->package_version = Versions::getVersion(self::PACKAGE_NAME);
@@ -76,12 +87,20 @@ class Metrics
 
         // If not in development mode, all requests should be async.
         if (!$this->development_mode) {
-            $promise = $this->client->postAsync('/request', [
-                'headers' => $headers,
-                'json' => [$payload]
-            ]);
+            try {
+                $promise = $this->client->post('/request', [
+                    'headers' => $headers,
+                    'json' => [$payload]
+                ]);
 
-            $promise->then();
+                $this->curl_handler->execute();
+            } catch (\Exception $e) {
+                // Usually this'll happen from a connection timeout exception from Guzzle trying to wait for us to
+                // resolve the promise we set up, but since we just want this to be a fire and forget request, we don't
+                // actually care about the response coming back from the Metrics API and all exceptions here can be
+                // discarded.
+            }
+
             return;
         }
 
