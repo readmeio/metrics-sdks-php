@@ -180,9 +180,9 @@ class Metrics
             $body = $response->getData();
 
             if (!empty($this->blacklist)) {
-                // @todo
+                $body = $this->excludeDataFromBlacklist($body);
             } elseif (!empty($this->whitelist)) {
-                // @todo
+                $body = $this->excludeDataNotInWhitelist($body);
             }
         } else {
             $body = $response->getContent();
@@ -256,21 +256,80 @@ class Metrics
         }, array_keys($input));
     }
 
+    /**
+     * Given an array, exclude data at the highest associative level of it based upon the configured whitelist.
+     *
+     * @param array $data
+     * @return array
+     */
     private function excludeDataFromBlacklist($data = []): array
     {
-        Arr::forget($data, $this->blacklist);
+        // If `$data` is an array with associative keys, let's run the blacklist against that, otherwise run the
+        // blacklist against the keys inside the top-level array.
+        if ($this->isArrayAssoc($data)) {
+            Arr::forget($data, $this->blacklist);
+            return $data;
+        }
+
+        foreach ($data as $k => $v) {
+            Arr::forget($data[$k], $this->blacklist);
+        }
+
         return $data;
     }
 
+    /**
+     * Given an array, return only data at the highest level of it that matches the configured whitelist.
+     *
+     * @param array $data
+     * @return array
+     */
     private function excludeDataNotInWhitelist($data = []): array
     {
         $ret = [];
-        foreach ($this->whitelist as $key) {
-            if (isset($data[$key])) {
-                $ret[$key] = $data[$key];
+
+        // If `$data` is an array with associative keys, let's run the whitelist against that, otherwise run the
+        // whitelist against the keys inside the top-level array.
+        if ($this->isArrayAssoc($data)) {
+            foreach ($this->whitelist as $key) {
+                if (isset($data[$key])) {
+                    $ret[$key] = $data[$key];
+                }
+            }
+
+            return $ret;
+        }
+
+        foreach ($data as $idx => $v) {
+            foreach ($this->whitelist as $key) {
+                if (isset($v[$key])) {
+                    $ret[$idx][$key] = $data[$idx][$key];
+                }
             }
         }
 
         return $ret;
+    }
+
+    /**
+     * Return whether or not a given array is associative.
+     *
+     * @param array $array
+     * @return bool
+     */
+    private function isArrayAssoc($array = []): bool
+    {
+        return count(array_filter(array_keys($array), 'is_string')) > 0;
+    }
+
+    /**
+     * Override the current Guzzle client with a new instance. Used in testing.
+     *
+     * @param Client $client
+     * @return $this
+     */
+    protected function setClient(Client $client): self
+    {
+        $this->client = $client;
     }
 }

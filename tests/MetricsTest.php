@@ -5,7 +5,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use ReadMe\Metrics;
 use Symfony\Component\HttpFoundation\HeaderBag;
-use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\HttpFoundation\Response;
 
 class MetricsTest extends \PHPUnit\Framework\TestCase
@@ -95,55 +94,59 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
         $this->assertCount(1, $payload['request']['log']['entries']);
 
-        $log_entry = $payload['request']['log']['entries'][0];
-        $this->assertSame($request->url(), $log_entry['pageref']);
+        $payload_entry = $payload['request']['log']['entries'][0];
+        $this->assertSame($request->url(), $payload_entry['pageref']);
         $this->assertRegExp(
             '/(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})\+(\d{2}:\d{2})/',
-            $log_entry['startedDateTime'],
+            $payload_entry['startedDateTime'],
             'startedDateTime was not in a format matching `2019-12-19T01:17:51+00:00`.'
         );
 
-        $this->assertIsFloat($log_entry['time']);
-        $this->assertIsNumeric($log_entry['time']);
-        $this->assertGreaterThan(0, $log_entry['time']);
+        $this->assertIsFloat($payload_entry['time']);
+        $this->assertIsNumeric($payload_entry['time']);
+        $this->assertGreaterThan(0, $payload_entry['time']);
 
         // Assert that the request was set up properly.
-        $log_request = $log_entry['request'];
-        $this->assertSame($request->method(), $log_request['method']);
-        $this->assertSame($request->fullUrl(), $log_request['url']);
-        $this->assertSame('HTTP/1.1', $log_request['httpVersion']);
+        $payload_request = $payload_entry['request'];
+        $this->assertSame($request->method(), $payload_request['method']);
+        $this->assertSame($request->fullUrl(), $payload_request['url']);
+        $this->assertSame('HTTP/1.1', $payload_request['httpVersion']);
 
         $this->assertSame([
             ['name' => 'cache-control', 'value' => 'max-age=0'],
             ['name' => 'user-agent', 'value' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_5) ...']
-        ], $log_request['headers']);
+        ], $payload_request['headers']);
 
         $this->assertSame([
             ['name' => 'val', 'value' => '1'],
             ['name' => 'arr', 'value' => '[null,"3"]']
-        ], $log_request['queryString']);
+        ], $payload_request['queryString']);
 
-        $this->assertSame('application/json', $log_request['postData']['mimeType']);
+        $this->assertSame('application/json', $payload_request['postData']['mimeType']);
         $this->assertEmpty(
-            $log_request['postData']['params'],
+            $payload_request['postData']['params'],
             'postData should not have any data here because there is none for this GET request'
         );
 
         // Assert that the response was set as expected into the payload.
-        $log_response = $log_entry['response'];
-        $this->assertSame(200, $log_response['status']);
-        $this->assertSame('OK', $log_response['statusText']);
+        $payload_response = $payload_entry['response'];
+        $this->assertSame(200, $payload_response['status']);
+        $this->assertSame('OK', $payload_response['statusText']);
 
         $this->assertSame([
             ['name' => 'cache-control', 'value' => 'no-cache, private'],
             ['name' => 'content-type', 'value' => 'application/json'],
             ['name' => 'x-ratelimit-limit', 'value' => 60],
             ['name' => 'x-ratelimit-remaining', 'value' => 58]
-        ], $log_response['headers']);
+        ], $payload_response['headers']);
 
-        $this->assertSame('["value 1","value 2","value 3"]', $log_response['content']['text']);
-        $this->assertSame($response->headers->get('Content-Length', 0), $log_response['content']['size']);
-        $this->assertSame($response->headers->get('Content-Type'), $log_response['content']['mimeType']);
+        $this->assertSame([
+            ['name' => 'password', 'value' => '123456'],
+            ['name' => 'apiKey', 'value' => 'abcdef'],
+        ], json_decode($payload_response['content']['text'], true));
+
+        $this->assertSame($response->headers->get('Content-Length', 0), $payload_response['content']['size']);
+        $this->assertSame($response->headers->get('Content-Type'), $payload_response['content']['mimeType']);
     }
 
     public function testConstructPayloadWithNonJsonResponse(): void
@@ -152,12 +155,12 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         $response = $this->getMockTextResponse();
         $payload = $this->metrics->constructPayload($request, $response);
 
-        $log_response = $payload['request']['log']['entries'][0]['response'];
-        $this->assertSame(200, $log_response['status']);
-        $this->assertSame('OK', $log_response['statusText']);
-        $this->assertSame('OK COMPUTER', $log_response['content']['text']);
-        $this->assertSame(11, $log_response['content']['size']);
-        $this->assertSame('text/plain', $log_response['content']['mimeType']);
+        $payload_response = $payload['request']['log']['entries'][0]['response'];
+        $this->assertSame(200, $payload_response['status']);
+        $this->assertSame('OK', $payload_response['statusText']);
+        $this->assertSame('OK COMPUTER', $payload_response['content']['text']);
+        $this->assertSame(11, $payload_response['content']['size']);
+        $this->assertSame('text/plain', $payload_response['content']['mimeType']);
     }
 
     public function testConstructPayloadWithUploadFileInRequest(): void
@@ -257,12 +260,38 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
     public function testProcessResponseShouldFilterOutItemsInBlacklist(): void
     {
-        $this->markTestIncomplete();
+        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+            'blacklist' => ['value']
+        ]);
+
+        $request = $this->getMockRequest();
+        $response = $this->getMockJsonResponse();
+        $payload = $metrics->constructPayload($request, $response);
+
+        $content = $payload['request']['log']['entries'][0]['response']['content'];
+
+        $this->assertSame([
+            ['name' => 'password'],
+            ['name' => 'apiKey']
+        ], json_decode($content['text'], true));
     }
 
     public function testProcessResponseShouldFilterOnlyItemsInWhitelist(): void
     {
-        $this->markTestIncomplete();
+        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+            'whitelist' => ['value']
+        ]);
+
+        $request = $this->getMockRequest();
+        $response = $this->getMockJsonResponse();
+        $payload = $metrics->constructPayload($request, $response);
+
+        $content = $payload['request']['log']['entries'][0]['response']['content'];
+
+        $this->assertSame([
+            ['value' => '123456'],
+            ['value' => 'abcdef']
+        ], json_decode($content['text'], true));
     }
 
     private function getMockRequest($query_params = [], $post_params = [], $file_params = []): Request
@@ -294,7 +323,10 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
     private function getMockJsonResponse(): JsonResponse
     {
         $response = \Mockery::mock(JsonResponse::class, [
-            'getData' => ['value 1', 'value 2', 'value 3'],
+            'getData' => [
+                ['name' => 'password', 'value' => '123456'],
+                ['name' => 'apiKey', 'value' => 'abcdef'],
+            ],
             'getStatusCode' => 200,
         ]);
 
