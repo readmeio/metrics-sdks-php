@@ -35,6 +35,9 @@ class Metrics
     /** @var ClientInterface */
     private $client;
 
+    /** @var string */
+    private $package_version;
+
     public function __construct(string $api_key, Closure $group, array $options = [])
     {
         $this->api_key = $api_key;
@@ -52,9 +55,9 @@ class Metrics
             // If the request takes longer than 2 seconds, let it go.
             // @todo allow this to be configured
             'timeout' => 2,
-
-            // @todo specify a custom user agent for the library
         ]);
+
+        $this->package_version = Versions::getVersion(self::PACKAGE_NAME);
     }
 
     /**
@@ -70,7 +73,8 @@ class Metrics
             // @todo maybe handle bad token 401 errors?
             $response = $this->client->post('/request', [
                 'headers' => [
-                    'Authorization' => 'Basic ' . base64_encode($this->api_key . ':')
+                    'Authorization' => 'Basic ' . base64_encode($this->api_key . ':'),
+                    'User-Agent' => 'readme-metrics-php/' . $this->package_version
                 ],
                 'json' => [
                     // @todo maybe change this to a queueing model like in readme-node
@@ -114,7 +118,6 @@ class Metrics
     public function constructPayload(Request $request, $response): array
     {
         $request_start = LARAVEL_START;
-        $package_version = Versions::getVersion(self::PACKAGE_NAME);
         $group = ($this->group)($request);
 
         if (!array_key_exists('id', $group)) {
@@ -131,7 +134,7 @@ class Metrics
                 'log' => [
                     'creator' => [
                         'name' => self::PACKAGE_NAME,
-                        'version' => $package_version,
+                        'version' => $this->package_version,
                         'comment' => PHP_OS_FAMILY . '/php v' . PHP_VERSION
                     ],
                     'entries' => [
