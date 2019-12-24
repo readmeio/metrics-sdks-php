@@ -6,36 +6,44 @@ use Illuminate\Http\Request;
 use ReadMe\Metrics;
 use Symfony\Component\HttpFoundation\HeaderBag;
 use Symfony\Component\HttpFoundation\ParameterBag;
+use Symfony\Component\HttpFoundation\Response;
 
 class MetricsTest extends \PHPUnit\Framework\TestCase
 {
-    /** @var Metrics */
-    private $metrics;
-
-    /** @var \Closure */
-    private $metrics_group;
+    private const MOCK_RESPONSE_HEADERS = [
+        'cache-control' => ['no-cache, private'],
+        'content-type' => ['application/json'],
+        'x-ratelimit-limit' => [60],
+        'x-ratelimit-remaining' => [58]
+    ];
 
     // ?val=1&arr[]=&arr[]=3
-    private $test_query_params = [
+    private const MOCK_QUERY_PARAMS = [
         'val' => '1',
         'arr' => [null, '3'],
     ];
 
-    private $test_post_params = [
+    private const MOCK_POST_PARAMS = [
         'password' => '123456',
         'apiKey' => 'abcdef',
         'another' => 'Hello world'
     ];
 
-    private $test_files_params = [
+    private const MOCK_FILES_PARAMS = [
         'testfileparam' => [
-          'name' => 'owlbert',
-          'type' => 'application/octet-stream',
-          'tmp_name' => __DIR__ . '/fixtures/owlbert.png',
-          'error' => 0,
-          'size' => 701048
+            'name' => 'owlbert',
+            'type' => 'application/octet-stream',
+            'tmp_name' => __DIR__ . '/fixtures/owlbert.png',
+            'error' => 0,
+            'size' => 701048
         ]
     ];
+
+    /** @var Metrics */
+    private $metrics;
+
+    /** @var \Closure */
+    private $metrics_group;
 
     public static function setUpBeforeClass(): void
     {
@@ -68,7 +76,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
     public function testConstructPayload(): void
     {
-        $request = $this->getMockRequest($this->test_query_params);
+        $request = $this->getMockRequest(self::MOCK_QUERY_PARAMS);
         $response = $this->getMockJsonResponse();
         $payload = $this->metrics->constructPayload($request, $response);
 
@@ -133,19 +141,28 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
             ['name' => 'x-ratelimit-remaining', 'value' => 58]
         ], $log_response['headers']);
 
-        $this->assertSame('"[\"value 1\", \"value 2\", \"value 3\"]"', $log_response['content']['text']);
+        $this->assertSame('["value 1","value 2","value 3"]', $log_response['content']['text']);
         $this->assertSame($response->headers->get('Content-Length', 0), $log_response['content']['size']);
         $this->assertSame($response->headers->get('Content-Type'), $log_response['content']['mimeType']);
     }
 
     public function testConstructPayloadWithNonJsonResponse(): void
     {
-        $this->markTestIncomplete();
+        $request = $this->getMockRequest(self::MOCK_QUERY_PARAMS);
+        $response = $this->getMockTextResponse();
+        $payload = $this->metrics->constructPayload($request, $response);
+
+        $log_response = $payload['request']['log']['entries'][0]['response'];
+        $this->assertSame(200, $log_response['status']);
+        $this->assertSame('OK', $log_response['statusText']);
+        $this->assertSame('OK COMPUTER', $log_response['content']['text']);
+        $this->assertSame(11, $log_response['content']['size']);
+        $this->assertSame('text/plain', $log_response['content']['mimeType']);
     }
 
     public function testConstructPayloadWithUploadFileInRequest(): void
     {
-        $request = $this->getMockRequest([], $this->test_post_params, $this->test_files_params);
+        $request = $this->getMockRequest([], self::MOCK_POST_PARAMS, self::MOCK_FILES_PARAMS);
         $response = $this->getMockJsonResponse();
         $payload = $this->metrics->constructPayload($request, $response);
 
@@ -156,7 +173,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
             ['name' => 'another', 'value' => 'Hello world'],
             [
                 'name' => 'testfileparam',
-                'value' => file_get_contents($this->test_files_params['testfileparam']['tmp_name']),
+                'value' => file_get_contents(self::MOCK_FILES_PARAMS['testfileparam']['tmp_name']),
                 'fileName' => 'owlbert',
                 'contentType' => 'image/png'
             ]
@@ -195,7 +212,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
             'blacklist' => ['val', 'password']
         ]);
 
-        $request = $this->getMockRequest($this->test_query_params, $this->test_post_params);
+        $request = $this->getMockRequest(self::MOCK_QUERY_PARAMS, self::MOCK_POST_PARAMS);
         $response = $this->getMockJsonResponse();
         $payload = $metrics->constructPayload($request, $response);
 
@@ -220,7 +237,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
             'whitelist' => ['val', 'password']
         ]);
 
-        $request = $this->getMockRequest($this->test_query_params, $this->test_post_params);
+        $request = $this->getMockRequest(self::MOCK_QUERY_PARAMS, self::MOCK_POST_PARAMS);
         $response = $this->getMockJsonResponse();
         $payload = $metrics->constructPayload($request, $response);
 
@@ -277,21 +294,33 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
     private function getMockJsonResponse(): JsonResponse
     {
         $response = \Mockery::mock(JsonResponse::class, [
-            'getData' => '["value 1", "value 2", "value 3"]',
+            'getData' => ['value 1', 'value 2', 'value 3'],
             'getStatusCode' => 200,
         ]);
 
         $response->headers = \Mockery::mock(HeaderBag::class, [
-            'all' => [
-                'cache-control' => ['no-cache, private'],
-                'content-type' => ['application/json'],
-                'x-ratelimit-limit' => [60],
-                'x-ratelimit-remaining' => [58]
-            ]
+            'all' => self::MOCK_RESPONSE_HEADERS
         ]);
 
         $response->headers->shouldReceive('get')->withArgs(['Content-Length', 0])->andReturn(33);
         $response->headers->shouldReceive('get')->withArgs(['Content-Type'])->andReturn('application/json');
+
+        return $response;
+    }
+
+    private function getMockTextResponse(): Response
+    {
+        $response = \Mockery::mock(Response::class, [
+            'getContent' => 'OK COMPUTER',
+            'getStatusCode' => 200,
+        ]);
+
+        $response->headers = \Mockery::mock(HeaderBag::class, [
+            'all' => self::MOCK_RESPONSE_HEADERS
+        ]);
+
+        $response->headers->shouldReceive('get')->withArgs(['Content-Length', 0])->andReturn(11);
+        $response->headers->shouldReceive('get')->withArgs(['Content-Type'])->andReturn('text/plain');
 
         return $response;
     }
