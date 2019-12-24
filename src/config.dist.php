@@ -53,15 +53,21 @@ return [
     'development_mode' => true,
 
     /**
-     * An array of dot-notation values from your API requests and responses that
-     * you wish to blacklist from sending to the metrics service. If this option
-     * has data in it, the whitelist below will be ignored.
+     * An array of keys from your API requests and responses that you wish to
+     * blacklist from sending to the metrics service. If this option has data in
+     * it, the whitelist below will be ignored.
+     *
+     * Note that this does not support dot-notation, so only top-level keys can
+     * be blacklisted.
      */
     'blacklist' => [],
 
     /**
-     * An array of dot-notation values from your API requests and responses that
-     * you only wish to send to the metrics service.
+     * An array of values from your API requests and responses that you only
+     * wish to send to the metrics service.
+     *
+     * Note that this does not support dot-notation, so only top-level keys can
+     * be whitelisted.
      */
     'whitelist' => [],
 ];
