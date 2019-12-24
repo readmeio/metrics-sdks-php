@@ -42,9 +42,12 @@ return [
     },
 
     /**
-     * Since ReadMe doesn't want to take your API down if you happen to be unable
-     * to send metrics to us, development mode is enabled by default and will
-     * silence all possible errors in transit.
+     * Since ReadMe doesn't want to take your API down if you happen to be
+     * unable to send metrics to us, development mode is enabled by default and
+     * will do two things:
+     *
+     *  - Make all API requests asynchronously.
+     *  - Silence all possible errors in transit.
      *
      * While you are still setting up and testing your integration, we recommend
      * enabling this option so you can see any possible error that may be
