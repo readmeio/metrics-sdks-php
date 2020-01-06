@@ -2,6 +2,7 @@
 
 Track your API metrics within ReadMe.
 
+[![Packagist](https://img.shields.io/packagist/v/readme/metrics.svg)](https://packagist.org/packages/readme/metrics)
 [![Build](https://github.com/readmeio/readme-php/workflows/CI/badge.svg)](https://github.com/readmeio/readme-php)
 
 [![](https://d3vv6lp55qjaqc.cloudfront.net/items/1M3C3j0I0s0j3T362344/Untitled-2.png)](https://readme.io)
