@@ -262,6 +262,7 @@ class Metrics
      *
      * @param array $input
      * @return array
+     * @psalm-suppress PossiblyUndefinedArrayOffset
      */
     protected static function convertObjectToArray(array $input): array
     {
