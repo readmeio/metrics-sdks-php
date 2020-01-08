@@ -173,10 +173,14 @@ class Metrics
 
     private function processRequest(Request $request): array
     {
-        // Since Laravel (currently as of 6.8.0) dumps $_GET and $_POST into `->query` and `->request` instead of
-        // putting $_GET into only `->query` and $_POST` into `->request`, we have no easy way way to dump only POST
-        // data into `postData`. So because of that, we're eschewing that and manually reconstructing our potential POST
-        // payload into an array here.
+        /**
+         * Since Laravel (currently as of 6.8.0) dumps $_GET and $_POST into `->query` and `->request` instead of
+         * putting $_GET into only `->query` and $_POST` into `->request`, we have no easy way way to dump only POST
+         * data into `postData`. So because of that, we're eschewing that and manually reconstructing our potential
+         * POST payload into an array here.
+         *
+         * @var array $params
+         */
         $params = array_replace_recursive($_POST, $_FILES);
         if (!empty($this->blacklist)) {
             $params = $this->excludeDataFromBlacklist($params);
