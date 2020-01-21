@@ -264,7 +264,7 @@
         },
         {
             "name": "illuminate/contracts",
-            "version": "v6.10.0",
+            "version": "v6.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/contracts.git",
@@ -308,7 +308,7 @@
         },
         {
             "name": "illuminate/filesystem",
-            "version": "v6.10.0",
+            "version": "v6.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/filesystem.git",
@@ -360,16 +360,16 @@
         },
         {
             "name": "illuminate/http",
-            "version": "v6.10.0",
+            "version": "v6.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/http.git",
-                "reference": "ac7dafc9614a5cf8dd835cdec909223cf782ba85"
+                "reference": "045d33bed64f64c32f8f4e21eb2dfc1794703592"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/illuminate/http/zipball/ac7dafc9614a5cf8dd835cdec909223cf782ba85",
-                "reference": "ac7dafc9614a5cf8dd835cdec909223cf782ba85",
+                "url": "https://api.github.com/repos/illuminate/http/zipball/045d33bed64f64c32f8f4e21eb2dfc1794703592",
+                "reference": "045d33bed64f64c32f8f4e21eb2dfc1794703592",
                 "shasum": ""
             },
             "require": {
@@ -406,11 +406,11 @@
             ],
             "description": "The Illuminate Http package.",
             "homepage": "https://laravel.com",
-            "time": "2020-01-07T13:47:03+00:00"
+            "time": "2020-01-13T10:58:53+00:00"
         },
         {
             "name": "illuminate/session",
-            "version": "v6.10.0",
+            "version": "v6.11.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/illuminate/session.git",
