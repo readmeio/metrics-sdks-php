@@ -15,7 +15,7 @@ composer require readme/metrics
 
 ## Usage
 
-`readme/metrics` is currently targeted towards codebases utilizing Laravel. To get up and running, you'll need to do the following things:
+`readme/metrics` is currently targeted towards codebases utilizing the [Laravel](https://laravel.com/) framework. To get up and running, you'll need to do the following things:
 
 1. Publish our config file into your `config/` directory:
 
