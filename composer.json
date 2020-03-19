@@ -19,9 +19,9 @@
         "readme"
     ],
     "require": {
-        "php": ">=7.2",
-        "illuminate/http": "^6.8",
-        "illuminate/support": "^6.8",
+        "php": "^7.2",
+        "illuminate/http": "^6.8 | ^7.0",
+        "illuminate/support": "^6.8 | ^7.0",
         "guzzlehttp/guzzle": "^6.4",
         "ocramius/package-versions": "^1.4"
     },
