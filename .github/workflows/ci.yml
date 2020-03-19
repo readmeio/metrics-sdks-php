@@ -37,11 +37,11 @@ jobs:
           composer require "laravel/framework:${{ matrix.laravel }}" --no-interaction --no-update
           composer update --${{ matrix.dependency-version }} --prefer-dist --no-interaction --no-suggest
 
-     - name: Check code standards
-       run: composer run-script lint
+      - name: Check code standards
+        run: composer run-script lint
 
-     - name: Execute static analysis
-       run: composer run-script psalm
+      - name: Execute static analysis
+        run: composer run-script psalm
 
-     - name: Run tests
-       run: composer run-script phpunit
+      - name: Run tests
+        run: composer run-script phpunit
