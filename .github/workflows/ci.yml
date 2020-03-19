@@ -1,26 +1,47 @@
 name: CI
 
-on: [push]
+on: [pull_request, push]
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        php: [7.2, 7.3, 7.4]
+        laravel: [6.*, 7.*]
+        dependency-version: [prefer-lowest, prefer-stable]
+        include:
+          - laravel: 7.*
+          - laravel: 6.*
+
+    name: PHP ${{ matrix.php }} - Laravel ${{ matrix.laravel }} - ${{ matrix.dependency-version }}
 
     steps:
-    - uses: actions/checkout@v1
+      - name: Checkout code
+        uses: actions/checkout@v1
 
-    - name: Validate composer.json and composer.lock
-      run: composer validate
+      - name: Cache dependencies
+        uses: actions/cache@v1
+        with:
+          path: ~/.composer/cache/files
+          key: dependencies-laravel-${{ matrix.laravel }}-php-${{ matrix.php }}-composer-${{ hashFiles('composer.json') }}
 
-    - name: Install dependencies
-      run: composer install --prefer-dist --no-progress --no-suggest
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
 
-    - name: Check code standards
-      run: composer run-script lint
+      - name: Install dependencies
+        run: |
+          composer require "laravel/framework:${{ matrix.laravel }}" --no-interaction --no-update
+          composer update --${{ matrix.dependency-version }} --prefer-dist --no-interaction --no-suggest
 
-    - name: Execute static analysis
-      run: composer run-script psalm
+     - name: Check code standards
+       run: composer run-script lint
 
-    - name: Run tests
-      run: composer run-script phpunit
+     - name: Execute static analysis
+       run: composer run-script psalm
+
+     - name: Run tests
+       run: composer run-script phpunit

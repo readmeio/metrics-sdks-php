@@ -1,3 +1,4 @@
 reports/
 vendor/
 .phpunit.*
+composer.lock
