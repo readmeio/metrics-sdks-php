@@ -30,8 +30,8 @@ class Metrics
     /** @var array */
     private $whitelist = [];
 
-    /** @var Closure */
-    private $group;
+    /** @var class-string */
+    private $group_handler;
 
     /** @var CurlMultiHandler */
     private $curl_handler;
@@ -42,16 +42,23 @@ class Metrics
     /** @var string */
     private $package_version;
 
-    public function __construct(string $api_key, Closure $group, array $options = [])
+    /**
+     * @param string $api_key
+     * @param class-string $group_handler
+     * @param array $options
+     */
+    public function __construct(string $api_key, string $group_handler, array $options = [])
     {
         $this->api_key = $api_key;
-        $this->group = $group;
+        $this->group_handler = $group_handler;
         $this->development_mode = array_key_exists('development_mode', $options)
             ? (bool)$options['development_mode']
             : false;
 
-        $this->blacklist = array_key_exists('blacklist', $options) ? $options['blacklist'] : [];
-        $this->whitelist = array_key_exists('whitelist', $options) ? $options['whitelist'] : [];
+        $this->blacklist = array_key_exists('blacklist', $options) && is_array($options['blacklist'])
+            ? $options['blacklist'] : [];
+        $this->whitelist = array_key_exists('whitelist', $options) && is_array($options['whitelist'])
+            ? $options['whitelist'] : [];
 
         $this->curl_handler = new CurlMultiHandler();
         $this->client = (isset($options['client'])) ? $options['client'] : new Client([
@@ -138,7 +145,7 @@ class Metrics
     public function constructPayload(Request $request, $response): array
     {
         $request_start = (!defined('LARAVEL_START')) ? LARAVEL_START : $_SERVER['REQUEST_TIME_FLOAT'];
-        $group = ($this->group)($request);
+        $group = $this->group_handler::constructGroup($request);
 
         if (!array_key_exists('id', $group)) {
             throw new \TypeError('Metrics grouping function did not return an array with an id present.');

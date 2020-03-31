@@ -10,6 +10,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use ReadMe\Metrics;
 use ReadMe\MetricsException;
+use ReadMe\Tests\Fixtures\TestHandler;
+use ReadMe\Tests\Fixtures\TestHandlerReturnsEmptyId;
+use ReadMe\Tests\Fixtures\TestHandlerReturnsNoData;
 use Symfony\Component\HttpFoundation\HeaderBag;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -47,8 +50,8 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
     /** @var Metrics */
     private $metrics;
 
-    /** @var \Closure */
-    private $metrics_group;
+    /** @var class-string */
+    private $group_handler = TestHandler::class;
 
     public static function setUpBeforeClass(): void
     {
@@ -62,15 +65,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
     {
         parent::setUp();
 
-        $this->metrics_group = function (Request $request): array {
-            return [
-                'id' => '123457890',
-                'label' => 'username',
-                'email' => 'email@example.com'
-            ];
-        };
-
-        $this->metrics = new Metrics('fakeApiKey', $this->metrics_group);
+        $this->metrics = new Metrics('fakeApiKey', $this->group_handler);
     }
 
     /**
@@ -84,7 +79,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         ]);
 
         $handlerStack = HandlerStack::create($mock);
-        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+        $metrics = new Metrics('fakeApiKey', $this->group_handler, [
             'development_mode' => $development_mode,
             'client' => new Client(['handler' => $handlerStack])
         ]);
@@ -131,7 +126,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         ]);
 
         $handlerStack = HandlerStack::create($mock);
-        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+        $metrics = new Metrics('fakeApiKey', $this->group_handler, [
             'development_mode' => $development_mode,
             'client' => new Client([
                 'handler' => $handlerStack
@@ -167,7 +162,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         ]);
 
         $handlerStack = HandlerStack::create($mock);
-        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+        $metrics = new Metrics('fakeApiKey', $this->group_handler, [
             'development_mode' => $development_mode,
             'client' => new Client(['handler' => $handlerStack])
         ]);
@@ -303,9 +298,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         $request = \Mockery::mock(Request::class);
         $response = \Mockery::mock(JsonResponse::class);
 
-        (new Metrics('fakeApiKey', function (): array {
-            return [];
-        }))->constructPayload($request, $response);
+        (new Metrics('fakeApiKey', TestHandlerReturnsNoData::class))->constructPayload($request, $response);
     }
 
     public function testConstructPayloadShouldThrowErrorIfGroupFunctionReturnsAnEmptyId(): void
@@ -316,14 +309,12 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
         $request = \Mockery::mock(Request::class);
         $response = \Mockery::mock(JsonResponse::class);
 
-        (new Metrics('fakeApiKey', function (): array {
-            return ['id' => ''];
-        }))->constructPayload($request, $response);
+        (new Metrics('fakeApiKey', TestHandlerReturnsEmptyId::class))->constructPayload($request, $response);
     }
 
     public function testProcessRequestShouldFilterOutItemsInBlacklist(): void
     {
-        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+        $metrics = new Metrics('fakeApiKey', $this->group_handler, [
             'blacklist' => ['val', 'password']
         ]);
 
@@ -348,7 +339,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
     public function testProcessRequestShouldFilterOnlyItemsInWhitelist(): void
     {
-        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+        $metrics = new Metrics('fakeApiKey', $this->group_handler, [
             'whitelist' => ['val', 'password']
         ]);
 
@@ -372,7 +363,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
     public function testProcessResponseShouldFilterOutItemsInBlacklist(): void
     {
-        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+        $metrics = new Metrics('fakeApiKey', $this->group_handler, [
             'blacklist' => ['value']
         ]);
 
@@ -390,7 +381,7 @@ class MetricsTest extends \PHPUnit\Framework\TestCase
 
     public function testProcessResponseShouldFilterOnlyItemsInWhitelist(): void
     {
-        $metrics = new Metrics('fakeApiKey', $this->metrics_group, [
+        $metrics = new Metrics('fakeApiKey', $this->group_handler, [
             'whitelist' => ['value']
         ]);
 
