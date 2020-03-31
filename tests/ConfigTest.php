@@ -9,7 +9,7 @@ class ConfigTest extends \PHPUnit\Framework\TestCase
 
         $this->assertSame([
             'api_key',
-            'group',
+            'group_handler',
             'development_mode',
             'blacklist',
             'whitelist'

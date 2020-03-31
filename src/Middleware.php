@@ -13,7 +13,7 @@ class Middleware
     {
         $this->metrics = new Metrics(
             config('readme.api_key'),
-            config('readme.group'),
+            config('readme.group_handler'),
             [
                 'development_mode' => config('readme.development_mode', false),
                 'blacklist' => config('readme.blacklist', []),
