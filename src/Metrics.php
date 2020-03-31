@@ -55,10 +55,13 @@ class Metrics
             ? (bool)$options['development_mode']
             : false;
 
-        $this->blacklist = array_key_exists('blacklist', $options) && is_array($options['blacklist'])
-            ? $options['blacklist'] : [];
-        $this->whitelist = array_key_exists('whitelist', $options) && is_array($options['whitelist'])
-            ? $options['whitelist'] : [];
+        if (isset($options['blacklist']) && is_array($options['blacklist'])) {
+            $this->blacklist = $options['blacklist'];
+        }
+
+        if (isset($options['whitelist']) && is_array($options['whitelist'])) {
+            $this->whitelist = $options['whitelist'];
+        }
 
         $this->curl_handler = new CurlMultiHandler();
         $this->client = (isset($options['client'])) ? $options['client'] : new Client([

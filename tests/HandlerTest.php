@@ -9,6 +9,6 @@ class HandlerTest extends \PHPUnit\Framework\TestCase
 
         $handler = new \App\Handler\ReadMe;
 
-        $this->assertTrue($handler instanceof \ReadMe\Handler);
+        $this->assertInstanceOf(\ReadMe\Handler::class, $handler);
     }
 }
