@@ -24,6 +24,6 @@ php artisan vendor:publish --provider="ReadMe\ServiceProvider"
 ```
 
 2. In `config/readme.php`, change `api_key` to the API key we provide to you in your ReadMe project on https://dash.readme.io.
-3. Also in that config file you will see a `group_handler` that will be set to `App\Handler\ReadMe::class`. This file will exist within `app\Handler` in your application and you should change the contents of its `constructGroup` function to return data that's relevant to your codebase and users. We've provided some simple defaults but you'll likely need to change them.
+3. In that config file, you will also see a `group_handler` that will be set to `App\Handler\ReadMe::class`. This file will exist within `app\Handler` in your application and you should change the contents of its `constructGroup` function to return data that's relevant to your codebase and users. We've provided some simple defaults but you'll likely need to change them.
 
-Once you've done all that, add `\ReadMe\Middleware::class` into your API middleware in `app/Http/Kernel.php` and API metrics will start streaming to your ReadMe project!
+Once you've done all that, add `\ReadMe\Middleware::class` into your API middleware in `app/Http/Kernel.php` and API Metrics will start streaming to your ReadMe project!
