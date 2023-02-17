@@ -142,7 +142,7 @@ class PayloadTest extends \PHPUnit\Framework\TestCase
         $har_entry = $har['request']['log']['entries'][0];
         $this->assertSame('https://api.example.com/v1/user', $har_entry['pageref']);
         $this->assertMatchesRegularExpression(
-            '/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:.\d{3})?Z/',
+            '/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:.\d{3})?([Z+-]\d{2}:\d{2})?$/',
             $har_entry['startedDateTime'],
             'startedDateTime was not in a format matching `2022-08-17T17:12:13Z`.'
         );
